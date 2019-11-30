@@ -2,6 +2,7 @@ import argparse
 import platform
 import os
 import firebase_admin
+import filetype
 
 from firebase_admin import credentials, db
 from win10toast import ToastNotifier
@@ -54,9 +55,14 @@ def main(args):
         full_path = os.path.join(path, app["path"])
         db_count = 0
         for file in get_list_of_files(full_path):
-            if file.endswith('.db'):
-                # print(str(file))
-                db_count = db_count + 1
+            try:
+                kind = filetype.guess(file)
+            except:
+                continue
+            if kind is not None:
+                print(f'File with extension {kind.extension} is {kind.mime}')
+                if kind.mime == 'application/x-sqlite3':
+                    db_count = db_count + 1
             
         print(f'Found {str(db_count)} dbs for {full_path}')
 
