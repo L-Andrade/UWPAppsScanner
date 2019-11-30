@@ -4,6 +4,7 @@ import os
 import firebase_admin
 import filetype
 import time
+import json
 
 from datetime import datetime
 from firebase_admin import credentials, db
@@ -12,6 +13,8 @@ from pathlib import Path
 DB_COUNT = 'db_count'
 FILE_COUNT = 'file_count'
 HISTORY = 'history'
+CONFIG_FILE = 'config.json'
+DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
@@ -31,7 +34,22 @@ def get_list_of_files(base_path):
     return all_files
 
 def get_info():
-    print('Print existing info on Firebase...')
+    print('Getting existing info from Firebase...')
+    
+    root = db.reference('/')
+    apps_ref = root.child('apps')
+    apps_snapshot = apps_ref.get()
+    
+    for app_name in apps_snapshot:
+        app_ref = apps_ref.child(app_name)
+        app = app_ref.get()
+        
+        print('\n-------------------------------------------------------------')
+        print(f'App name: {app_name}')
+        print('-------------------------------------------------------------')
+        #parsed_app = json.loads(str(app))
+        print(json.dumps(str(app), indent=4, sort_keys=True))
+        # print(str(app))
 
 def is_new(app, app_info):
     if not DB_COUNT in app or not FILE_COUNT in app:
@@ -47,11 +65,6 @@ def main(args):
     else:
         path = str(Path.home()) + '\\AppData\\Local\\Packages'
     
-    # Firebase setup
-    cred = credentials.Certificate("config.json")
-
-    firebase_admin.initialize_app(cred, {'databaseURL': 'https://uwp-apps-scanner.firebaseio.com/'})
-
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
     windows_ver = platform.platform()
@@ -67,7 +80,7 @@ def main(args):
         app = app_ref.get()
         
         # Get path to app's folder
-        full_path = os.path.join(path, app["path"])
+        full_path = os.path.join(path, app['path'])
 
         # Init app_info that will be sent to server
         app_info = {}
@@ -110,8 +123,13 @@ def setup_args():
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     return parser.parse_args()
 
+def setup_firebase():
+    cred = credentials.Certificate(CONFIG_FILE)
+    firebase_admin.initialize_app(cred, {'databaseURL': DATABASE_URL})
+
 if __name__ == "__main__":
     args = setup_args()
+    setup_firebase()
     if args.notification:
         from win10toast import ToastNotifier
     if args.info:
