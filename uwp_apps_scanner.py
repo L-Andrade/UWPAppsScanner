@@ -5,8 +5,13 @@ import firebase_admin
 import filetype
 import time
 
+from datetime import datetime
 from firebase_admin import credentials, db
 from pathlib import Path
+
+DB_COUNT = 'db_count'
+FILE_COUNT = 'file_count'
+HISTORY = 'history'
 
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
@@ -27,6 +32,11 @@ def get_list_of_files(base_path):
 
 def get_info():
     print('Print existing info on Firebase...')
+
+def is_new(app, app_info):
+    if not DB_COUNT in app or not FILE_COUNT in app:
+        return True
+    return app[DB_COUNT] != app_info[DB_COUNT] or app[FILE_COUNT] != app_info[FILE_COUNT]
 
 def main(args):
     # toaster = ToastNotifier()
@@ -51,20 +61,44 @@ def main(args):
     apps_ref = root.child('apps')
     apps_snapshot = apps_ref.get()
 
+    # For all apps in Firebase config
     for app_name in apps_snapshot:
-        app = apps_ref.child(app_name).get()
+        app_ref = apps_ref.child(app_name)
+        app = app_ref.get()
+        
+        # Get path to app's folder
         full_path = os.path.join(path, app["path"])
+
+        # Init app_info that will be sent to server
+        app_info = {}
         db_count = 0
+        file_count = 0
+
+        # For all files in the app's folder
         for file in get_list_of_files(full_path):
+            # Try to get file type
+            # If it got an exception or could not guess type, skip it
             try:
                 kind = filetype.guess(file)
             except:
                 continue
-            if kind is not None:
-                print(f'File with extension {kind.extension} is {kind.mime}')
-                if kind.mime == 'application/x-sqlite3':
-                    db_count = db_count + 1
-            
+            if kind is None:
+                continue
+            print(f'File with extension {kind.extension} is {kind.mime}')
+            if kind.mime == 'application/x-sqlite3':
+                db_count += 1
+            else:
+                file_count += 1
+        
+        app_info[DB_COUNT] = db_count
+        app_info[FILE_COUNT] = file_count
+
+        user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
+        if is_new(app, app_info):
+            app_info['updated_by'] = user_info
+        app_ref.child(HISTORY).push(user_info)
+        app_ref.update(app_info)
+        
         print(f'Found {str(db_count)} dbs for {full_path}')
     
     print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
@@ -76,7 +110,6 @@ def setup_args():
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     return parser.parse_args()
 
-# Args boilerplat and main call
 if __name__ == "__main__":
     args = setup_args()
     if args.notification:
