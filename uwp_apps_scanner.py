@@ -36,12 +36,9 @@ def main():
     
     # Firebase setup
     cred = credentials.Certificate("config.json")
-    try:
-        firebase_admin.initialize_app(cred, {'databaseURL': 'https://uwp-apps-scanner.firebaseio.com/'})
-    except expression as identifier:
-        print('Are you connected to the internet?')
-        return
 
+    firebase_admin.initialize_app(cred, {'databaseURL': 'https://uwp-apps-scanner.firebaseio.com/'})
+    
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
     windows_ver = platform.platform()
