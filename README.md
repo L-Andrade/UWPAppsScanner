@@ -6,7 +6,7 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 * pip install firebase-admin
 * pip install filetype
 * pip install win10toast
-  * for Windows notifications - might become optional in the future.
+  * Optional, for Windows notifications. Use the `-n` argument.
 
 # Usage
 `python uwp_apps_scanner.py`

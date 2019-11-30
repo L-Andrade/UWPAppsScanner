@@ -3,9 +3,9 @@ import platform
 import os
 import firebase_admin
 import filetype
+import time
 
 from firebase_admin import credentials, db
-from win10toast import ToastNotifier
 from pathlib import Path
 
 def get_list_of_files(base_path):
@@ -45,6 +45,7 @@ def main(args):
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
     windows_ver = platform.platform()
+    start_time = time.time()
 
     root = db.reference('/')
     apps_ref = root.child('apps')
@@ -65,6 +66,8 @@ def main(args):
                     db_count = db_count + 1
             
         print(f'Found {str(db_count)} dbs for {full_path}')
+    
+    print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
 
 # Args boilerplat and main call
 if __name__ == "__main__":
@@ -73,6 +76,8 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     args = parser.parse_args()
+    if args.notification:
+        from win10toast import ToastNotifier
     if args.info:
         get_info()
     else:
