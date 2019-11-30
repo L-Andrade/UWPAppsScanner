@@ -69,13 +69,16 @@ def main(args):
     
     print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
 
-# Args boilerplat and main call
-if __name__ == "__main__":
+def setup_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', type=str, help='Path to AppData\\Local\\Packages')
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+# Args boilerplat and main call
+if __name__ == "__main__":
+    args = setup_args()
     if args.notification:
         from win10toast import ToastNotifier
     if args.info:
