@@ -56,14 +56,23 @@ def is_new(app, app_info):
         return True
     return app[DB_COUNT] != app_info[DB_COUNT] or app[FILE_COUNT] != app_info[FILE_COUNT]
 
+def notify_user(toaster, app_name):
+    # Library does not support notifications without duration...
+    # It will throw an exception but still show message with the desired behavior.
+    try:
+        toaster.show_toast('UWP Scanner', f'{app_name} has updates.', duration=None)
+    except:
+        pass
+
 def main(args):
-    # toaster = ToastNotifier()
-    # toaster.show_toast("UWP", path, duration=10)
     # Args
     if args.path:
         path = args.path
     else:
         path = str(Path.home()) + '\\AppData\\Local\\Packages'
+    if args.notification:
+        notify = True
+        toaster = ToastNotifier()
     
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
@@ -109,6 +118,8 @@ def main(args):
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
         if is_new(app, app_info):
             app_info['updated_by'] = user_info
+            if notify:
+                notify_user(toaster, app_name)
         app_ref.child(HISTORY).push(user_info)
         app_ref.update(app_info)
         
