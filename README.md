@@ -4,7 +4,7 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 # Requirements
 * Python 3.7
 * pip install firebase-admin
-* pip install tika
+* pip install filetype
 * pip install win10toast
   * for Windows notifications - might become optional in the future.
 
