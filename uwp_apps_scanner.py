@@ -24,11 +24,13 @@ def get_list_of_files(base_path):
                 
     return all_files
 
-def main():
+def get_info():
+    print('Print existing info on Firebase...')
+
+def main(args):
     # toaster = ToastNotifier()
     # toaster.show_toast("UWP", path, duration=10)
     # Args
-    args = parser.parse_args()
     if args.path:
         path = args.path
     else:
@@ -38,7 +40,7 @@ def main():
     cred = credentials.Certificate("config.json")
 
     firebase_admin.initialize_app(cred, {'databaseURL': 'https://uwp-apps-scanner.firebaseio.com/'})
-    
+
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
     windows_ver = platform.platform()
@@ -63,4 +65,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', type=str, help='Path to AppData\\Local\\Packages')
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
-    main()
+    parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
+    args = parser.parse_args()
+    if args.info:
+        get_info()
+    else:
+        main(args)
