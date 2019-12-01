@@ -33,7 +33,7 @@ def get_list_of_files(base_path):
                 
     return all_files
 
-def get_info():
+def get_info(with_history):
     print('Getting existing info from Firebase...')
     
     root = db.reference('/')
@@ -47,9 +47,15 @@ def get_info():
         print('\n-------------------------------------------------------------')
         print(f'App name: {app_name}')
         print('-------------------------------------------------------------')
-        #parsed_app = json.loads(str(app))
-        print(json.dumps(str(app), indent=4, sort_keys=True))
-        # print(str(app))
+        for key, val in app.items():
+            if key == "history" and not with_history:
+                continue
+            if isinstance(val, dict):
+                print(key)
+                for key, val in val.items():
+                    print(f'\t{key}: {val}')
+            else:
+                print(f'{key}: {val}')
 
 def is_new(app, app_info):
     if not DB_COUNT in app or not FILE_COUNT in app:
@@ -132,6 +138,7 @@ def setup_args():
     parser.add_argument('-p', '--path', type=str, help='Path to AppData\\Local\\Packages')
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
+    parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
     return parser.parse_args()
 
 def setup_firebase():
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     setup_firebase()
     if args.notification:
         from win10toast import ToastNotifier
-    if args.info:
-        get_info()
+    if args.info or args.infohistory:
+        get_info(args.infohistory)
     else:
         main(args)
