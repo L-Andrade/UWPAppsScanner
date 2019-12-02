@@ -19,17 +19,21 @@ DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
     # names in the given directory 
-    list_files = os.listdir(base_path)
     all_files = list()
     # Iterate over all the entries
-    for entry in list_files:
+    try:
+        list_files = os.listdir(base_path)
+        for entry in list_files:
         # Create full path
-        full_path = os.path.join(base_path, entry)
-        # If entry is a directory then get the list of files in this directory 
-        if os.path.isdir(full_path):
-            all_files = all_files + get_list_of_files(full_path)
-        else:
-            all_files.append(full_path)
+            full_path = os.path.join(base_path, entry)
+            # If entry is a directory then get the list of files in this directory 
+            if os.path.isdir(full_path):
+                all_files = all_files + get_list_of_files(full_path)
+            else:
+                all_files.append(full_path)
+    except:
+        pass
+    
                 
     return all_files
 
@@ -79,6 +83,8 @@ def main(args):
     if args.notification:
         notify = True
         toaster = ToastNotifier()
+    else:
+        notify = False
     
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
