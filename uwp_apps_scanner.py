@@ -15,6 +15,7 @@ FILE_COUNT = 'file_count'
 HISTORY = 'history'
 CONFIG_FILE = 'config.json'
 DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
+VERSION = 'version'
 
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
@@ -47,7 +48,7 @@ def get_info(with_history):
     for app_name in apps_snapshot:
         app_ref = apps_ref.child(app_name)
         app = app_ref.get()
-        
+
         print('\n-------------------------------------------------------------')
         print(f'App name: {app_name}')
         print('-------------------------------------------------------------')
@@ -61,18 +62,37 @@ def get_info(with_history):
             else:
                 print(f'{key}: {val}')
 
-def is_new(app, app_info):
-    if not DB_COUNT in app or not FILE_COUNT in app:
+def is_new_version(current, server):
+    vers_current = current.split('.')
+    vers_server = server.split('.')
+    if len(vers_current) > len(vers_server):
         return True
-    return app[DB_COUNT] != app_info[DB_COUNT] or app[FILE_COUNT] != app_info[FILE_COUNT]
+    for i in range(0, len(vers_server)):
+        if int(vers_current[i]) > int(vers_server[i]):
+            return True
+    return False
+
+def is_new(app, app_info):
+    if not DB_COUNT in app or not FILE_COUNT in app or not VERSION in app:
+        return True
+    return is_new_version(app_info[VERSION], app[VERSION])
 
 def notify_user(toaster, app_name):
     # Library does not support notifications without duration...
     # It will throw an exception but still show message with the desired behavior.
     try:
-        toaster.show_toast('UWP Scanner', f'{app_name} has updates.', duration=None)
+        toaster.show_toast('UWP Scanner', f'{app_name} has updates.', duration = None)
     except:
         pass
+
+def get_app_version(app):
+    windows_apps_path = os.environ['ProgramW6432'] + '\\WindowsApps'
+    app_start_path = app['path'].split('_')[0]
+    apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path,dI))]
+    for app_dir in apps_dirs:
+        if app_start_path in app_dir:
+            return app_dir.split('_')[1]
+    return None
 
 def main(args):
     # Args
@@ -107,6 +127,8 @@ def main(args):
         app_info = {}
         db_count = 0
         file_count = 0
+
+        app_info[VERSION] = get_app_version(app)
 
         # For all files in the app's folder
         for file in get_list_of_files(full_path):
