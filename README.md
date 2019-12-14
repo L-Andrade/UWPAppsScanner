@@ -12,6 +12,7 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 
 # Usage
 `python uwp_apps_scanner.py`
+
 Possible arguments:
 * -h, --help: Help message and arguments.
 * -n, --notification: Pushes a notification if there are changes to an app's files.

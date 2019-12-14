@@ -190,7 +190,7 @@ def setup_args():
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
-    parser.add_argument('-v', '--verbose',action='store_true', help='Shows all logging')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Shows all logging')
     return parser.parse_args()
 
 def setup_firebase():
