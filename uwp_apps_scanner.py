@@ -151,7 +151,7 @@ def main(args):
 
         version = get_app_version(app)
         if version is None:
-            return
+            continue
         app_info[VERSION] = version
 
         # For all files in the app's folder
@@ -180,7 +180,7 @@ def main(args):
             app_ref.child(HISTORY).push(user_info)
             app_ref.update(app_info)
         
-        print(f'Found {str(len(dbs))} DBs for {app[PATH]}, with version {app_info[VERSION]}')
+        print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
     
     print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
 
