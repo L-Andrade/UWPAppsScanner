@@ -19,6 +19,7 @@ CONFIG_FILE = 'config.json'
 DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 VERSION = 'version'
 SQLITE_MIME = 'application/x-sqlite3'
+CONFIRMING_CHAR = 'y'
 
 def print_if_verbose(msg):
     if verbose:
@@ -93,11 +94,19 @@ def is_new(app, app_info):
     is_new_ver = is_new_version(app_info[VERSION], app[VERSION])
     if app_info[VERSION] != app[VERSION] and not is_new_ver:
         print(f'You are running an older version of {app[PATH]}')
+    if app_info[VERSION] == app[VERSION] and app_info[DBS] != app[DBS]:
+        print(f'App {app[EXE]} is in the same version in the server, but DBs are different.')
+        print('Local DBs are: ')
+        for db in app_info[DBS]:
+            print(f'\t{db}')
+        print('\nServer DBs are: ')
+        for db in app[DBS]:
+            print(f'\t{db}')
+        option = input('\nType y if you would like to update server with local info: ')
+        return option.lower() == CONFIRMING_CHAR
     return is_new_ver
 
 def notify_user(toaster, app_name):
-    if not notify:
-        return
     # Library does not support notifications without duration...
     # It will throw an exception but still show message with the desired behavior.
     try:
@@ -175,10 +184,13 @@ def main(args):
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
         if is_new(app, app_info):
             print_if_verbose(f'There are updates for {app_name}')
-            notify_user(toaster, app_name)
+            if notify:
+                notify_user(toaster, app_name)
             app_info['updated_by'] = user_info
             app_ref.child(HISTORY).push(user_info)
             app_ref.update(app_info)
+        else:
+            print_if_verbose('No changes detected.')
         
         print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
     
