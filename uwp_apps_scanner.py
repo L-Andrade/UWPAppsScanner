@@ -25,6 +25,18 @@ def print_if_verbose(msg):
     if verbose:
         print(msg)
 
+def print_item_or_dict(item_key, item_value):
+    if isinstance(item_value, dict):
+        print(item_key)
+        for key, val in item_value.items():
+            if isinstance(val, dict):
+                print('------------------------------------------------')
+                print_item_or_dict(key, val)
+            else:
+                print(f'\t{key}: {val}')
+    else:
+        print(f'{item_key}: {item_value}')
+
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
     # names in the given directory 
@@ -63,12 +75,7 @@ def get_info(with_history):
         for key, val in app.items():
             if key == "history" and not with_history:
                 continue
-            if isinstance(val, dict):
-                print(key)
-                for key, val in val.items():
-                    print(f'\t{key}: {val}')
-            else:
-                print(f'{key}: {val}')
+            print_item_or_dict(key, val)
 
 def get_version_number(filename):
     try:
