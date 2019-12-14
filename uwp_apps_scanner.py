@@ -8,8 +8,10 @@ import time
 from datetime import datetime
 from firebase_admin import credentials, db
 from pathlib import Path
+from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
 PATH = 'path'
+EXE = 'exe'
 DBS = 'dbs'
 FILE_COUNT = 'file_count'
 HISTORY = 'history'
@@ -67,13 +69,21 @@ def get_info(with_history):
             else:
                 print(f'{key}: {val}')
 
+def get_version_number(filename):
+    try:
+        print(str(filename))
+        info = GetFileVersionInfo (filename, "\\")
+        ms = info['FileVersionMS']
+        ls = info['FileVersionLS']
+        return [HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls)]
+    except:
+        return [0, 0, 0, 0]
+
 def is_new_version(current, server):
-    vers_current = current.split('.')
-    vers_server = server.split('.')
-    if len(vers_current) > len(vers_server):
+    if len(current) > len(server):
         return True
-    for i in range(0, len(vers_server)):
-        if int(vers_current[i]) > int(vers_server[i]):
+    for i in range(0, len(server)):
+        if current[i] > server[i]:
             return True
     return False
 
@@ -99,12 +109,13 @@ def get_app_version(app):
     windows_apps_path = os.environ['ProgramW6432'] + '\\WindowsApps'
     app_start_path = app[PATH].split('_')[0]
     try:
-        apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path,dI))]
+        apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path, dI))]
         for app_dir in apps_dirs:
-            if app_start_path in app_dir:
-                return app_dir.split('_')[1]
+            if app_start_path in app_dir and 'x64' in app_dir:
+                full_path = windows_apps_path + '\\' + app_dir + '\\' + app[EXE]
+                return get_version_number(full_path)
     except PermissionError:
-        print(f'You do not have permissions to open {windows_apps_path}')
+        print(f'You do not have permissions to open {windows_apps_path}.')
     return None
 
 def main(args):

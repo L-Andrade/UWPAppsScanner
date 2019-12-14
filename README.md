@@ -3,9 +3,11 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 
 # Requirements
 * Python 3.7
-* pip install firebase-admin
-* pip install filetype
-* pip install win10toast
+* `pip install firebase-admin`
+* `pip install filetype`
+* `pip install pywin32`
+  * And for the post-install: `python Scripts/pywin32_postinstall.py -install`
+* `pip install win10toast`
   * Optional, for Windows notifications. Use the `-n` argument.
 
 # Usage
