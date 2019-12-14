@@ -4,18 +4,23 @@ import os
 import firebase_admin
 import filetype
 import time
-import json
 
 from datetime import datetime
 from firebase_admin import credentials, db
 from pathlib import Path
 
-DB_COUNT = 'db_count'
+PATH = 'path'
+DBS = 'dbs'
 FILE_COUNT = 'file_count'
 HISTORY = 'history'
 CONFIG_FILE = 'config.json'
 DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 VERSION = 'version'
+SQLITE_MIME = 'application/x-sqlite3'
+
+def print_if_verbose(msg):
+    if verbose:
+        print(msg)
 
 def get_list_of_files(base_path):
     # create a list of file and sub directories 
@@ -73,11 +78,16 @@ def is_new_version(current, server):
     return False
 
 def is_new(app, app_info):
-    if not DB_COUNT in app or not FILE_COUNT in app or not VERSION in app:
+    if not VERSION in app:
         return True
-    return is_new_version(app_info[VERSION], app[VERSION])
+    is_new_ver = is_new_version(app_info[VERSION], app[VERSION])
+    if app_info[VERSION] != app[VERSION] and not is_new_ver:
+        print(f'You are running an older version of {app[PATH]}')
+    return is_new_ver
 
 def notify_user(toaster, app_name):
+    if not notify:
+        return
     # Library does not support notifications without duration...
     # It will throw an exception but still show message with the desired behavior.
     try:
@@ -87,11 +97,14 @@ def notify_user(toaster, app_name):
 
 def get_app_version(app):
     windows_apps_path = os.environ['ProgramW6432'] + '\\WindowsApps'
-    app_start_path = app['path'].split('_')[0]
-    apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path,dI))]
-    for app_dir in apps_dirs:
-        if app_start_path in app_dir:
-            return app_dir.split('_')[1]
+    app_start_path = app[PATH].split('_')[0]
+    try:
+        apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path,dI))]
+        for app_dir in apps_dirs:
+            if app_start_path in app_dir:
+                return app_dir.split('_')[1]
+    except PermissionError:
+        print(f'You do not have permissions to open {windows_apps_path}')
     return None
 
 def main(args):
@@ -100,12 +113,9 @@ def main(args):
         path = args.path
     else:
         path = str(Path.home()) + '\\AppData\\Local\\Packages'
-    if args.notification:
-        notify = True
+    if notify:
         toaster = ToastNotifier()
-    else:
-        notify = False
-    
+
     # Will be used later to identify version/user who updated the DB
     reported_by = os.getlogin()
     windows_ver = platform.platform()
@@ -121,14 +131,17 @@ def main(args):
         app = app_ref.get()
         
         # Get path to app's folder
-        full_path = os.path.join(path, app['path'])
+        full_path = os.path.join(path, app[PATH])
 
         # Init app_info that will be sent to server
         app_info = {}
-        db_count = 0
+        dbs = []
         file_count = 0
 
-        app_info[VERSION] = get_app_version(app)
+        version = get_app_version(app)
+        if version is None:
+            return
+        app_info[VERSION] = version
 
         # For all files in the app's folder
         for file in get_list_of_files(full_path):
@@ -136,28 +149,27 @@ def main(args):
             # If it got an exception or could not guess type, skip it
             try:
                 kind = filetype.guess(file)
+                filename = file.split('\\')[-1]
+                print_if_verbose(f'File {filename} is {kind.mime}')
+                if kind.mime == SQLITE_MIME:
+                    dbs.append(filename)
+                else:
+                    file_count += 1
             except:
-                continue
-            if kind is None:
-                continue
-            print(f'File with extension {kind.extension} is {kind.mime}')
-            if kind.mime == 'application/x-sqlite3':
-                db_count += 1
-            else:
-                file_count += 1
+                print_if_verbose(f'Failed to guess type for {file}.')
         
-        app_info[DB_COUNT] = db_count
+        app_info[DBS] = dbs
         app_info[FILE_COUNT] = file_count
 
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
         if is_new(app, app_info):
+            print_if_verbose(f'There are updates for {app_name}')
+            notify_user(toaster, app_name)
             app_info['updated_by'] = user_info
-            if notify:
-                notify_user(toaster, app_name)
-        app_ref.child(HISTORY).push(user_info)
-        app_ref.update(app_info)
+            app_ref.child(HISTORY).push(user_info)
+            app_ref.update(app_info)
         
-        print(f'Found {str(db_count)} dbs for {full_path}')
+        print(f'Found {str(len(dbs))} DBs for {app[PATH]}, with version {app_info[VERSION]}')
     
     print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
 
@@ -167,6 +179,7 @@ def setup_args():
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
+    parser.add_argument('-v', '--verbose',action='store_true', help='Shows all logging')
     return parser.parse_args()
 
 def setup_firebase():
@@ -176,7 +189,9 @@ def setup_firebase():
 if __name__ == "__main__":
     args = setup_args()
     setup_firebase()
-    if args.notification:
+    verbose = args.verbose
+    notify = args.notification
+    if notify:
         from win10toast import ToastNotifier
     if args.info or args.infohistory:
         get_info(args.infohistory)

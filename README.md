@@ -15,4 +15,5 @@ Possible arguments:
 * -n, --notification: Pushes a notification if there are changes to an app's files.
 * -i, --info: Shows information available in Firebase.
 * -ih, --infohistory: Shows information available in Firebase with update history.
-* -p, --path: Overrides the base path to AppData\Local\Packages to the specified one (useful if you have multiple users/disks or using a folder for tests)
+* -v, --verbose: Shows all logging.
+* -p, --path: Overrides the base path to AppData\Local\Packages to the specified one (useful if you have multiple users/disks or using a folder for tests).
