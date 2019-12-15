@@ -101,6 +101,8 @@ def is_new(app, app_info):
     is_new_ver = is_new_version(app_info[VERSION], app[VERSION])
     if app_info[VERSION] != app[VERSION] and not is_new_ver:
         print(f'You are running an older version of {app[PATH]}')
+    if not DBS in app and DBS in app_info:
+        return True
     if app_info[VERSION] == app[VERSION] and app_info[DBS] != app[DBS]:
         print(f'App {app[EXE]} is in the same version in the server, but DBs are different.')
         print('Local DBs are: ')
@@ -185,7 +187,7 @@ def main(args):
             except:
                 print_if_verbose(f'Failed to guess type for {file}.')
         
-        app_info[DBS] = dbs
+        app_info[DBS] = list(dict.fromkeys(dbs))
         app_info[FILE_COUNT] = file_count
 
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
