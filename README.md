@@ -5,6 +5,7 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 * Python 3.7
 * `pip install firebase-admin`
 * `pip install filetype`
+* `pip install dictdiffer`
 * `pip install pywin32`
   * And for the post-install: `python Scripts/pywin32_postinstall.py -install`
 * `pip install win10toast`

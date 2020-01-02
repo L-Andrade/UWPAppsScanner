@@ -6,6 +6,7 @@ import filetype
 import time
 import sqlite3
 
+from dictdiffer import diff
 from datetime import datetime
 from firebase_admin import credentials, db
 from pathlib import Path
@@ -125,12 +126,9 @@ def is_new(app, app_info):
         return True
     if app_info[VERSION] == app[VERSION] and app_info[DBS] != app[DBS]:
         print(f'App {app[EXE]} is in the same version in the server, but DBs are different.')
-        print('Local DBs are: ')
-        for db in app_info[DBS]:
-            print(f'\t{db}')
-        print('\nServer DBs are: ')
-        for db in app[DBS]:
-            print(f'\t{db}')
+        print('Difference between LOCAL and SERVER is:')
+        for difference in list(diff(app_info[DBS], app[DBS])):
+            print(f'\t{difference}')
         option = input('\nType y if you would like to update server with local info: ')
         return option.lower() == CONFIRMING_CHAR
     return is_new_ver
@@ -246,7 +244,6 @@ def main(args):
         app_info[FILE_COUNT] = file_count
 
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
-        print(user_info)
         if is_new(app, app_info):
             print_if_verbose(f'There are updates for {app_name}')
             if notify:
