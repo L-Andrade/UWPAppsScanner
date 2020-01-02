@@ -4,12 +4,14 @@ import os
 import firebase_admin
 import filetype
 import time
+import sqlite3
 
 from datetime import datetime
 from firebase_admin import credentials, db
 from pathlib import Path
 from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
+# Constants
 PATH = 'path'
 EXE = 'exe'
 DBS = 'dbs'
@@ -20,6 +22,10 @@ DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 VERSION = 'version'
 SQLITE_MIME = 'application/x-sqlite3'
 CONFIRMING_CHAR = 'y'
+PRAGMA_USER_VERSION = 'PRAGMA user_version'
+SELECT_SQLITE_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
+USER_VERSION = 'user_version'
+SCHEMA_VERSION = 2
 
 def print_if_verbose(msg):
     if verbose:
@@ -57,6 +63,19 @@ def get_list_of_files(base_path):
     
                 
     return all_files
+
+def is_local_updated():
+    root = db.reference('/')
+    schema_version = root.child('schema_version').get()
+
+    if SCHEMA_VERSION != schema_version:
+        print('Your script is outdated.')
+        print(f'\tLocal is at version {SCHEMA_VERSION}')
+        print(f'\tServer is at version {schema_version}')
+        return False
+    print('Your script is up-to-date.')
+    return True
+
 
 def get_info(with_history):
     print('Getting existing info from Firebase...')
@@ -100,8 +119,9 @@ def is_new(app, app_info):
         return True
     is_new_ver = is_new_version(app_info[VERSION], app[VERSION])
     if app_info[VERSION] != app[VERSION] and not is_new_ver:
-        print(f'You are running an older version of {app[PATH]}')
+        print(f'You are running an older version of {app[EXE]}')
     if not DBS in app and DBS in app_info:
+        print_if_verbose(f'There are no DBs in server for {app[EXE]}. Updating with local info.')
         return True
     if app_info[VERSION] == app[VERSION] and app_info[DBS] != app[DBS]:
         print(f'App {app[EXE]} is in the same version in the server, but DBs are different.')
@@ -136,6 +156,23 @@ def get_app_version(app):
         print(f'You do not have permissions to open {windows_apps_path}.')
     return None
 
+def process_db(file):
+    db_info = {}
+    try:
+        db_conn = sqlite3.connect(file)
+        c = db_conn.cursor()
+        c.execute(PRAGMA_USER_VERSION)
+        db_info[USER_VERSION] = c.fetchone()[0]
+        c.execute(SELECT_SQLITE_TABLES)
+        db_info['tables'] = [item[0] for item in c.fetchall()]
+    except Exception as e:
+        db_info = None
+        print_if_verbose(str(e))
+    finally:
+        c.close()
+        db_conn.close()
+    return db_info
+
 def main(args):
     # Args
     if args.path:
@@ -151,6 +188,11 @@ def main(args):
     start_time = time.time()
 
     root = db.reference('/')
+
+    if not is_local_updated():
+        return
+
+    # Get DB apps
     apps_ref = root.child('apps')
     apps_snapshot = apps_ref.get()
 
@@ -164,7 +206,7 @@ def main(args):
 
         # Init app_info that will be sent to server
         app_info = {}
-        dbs = []
+        dbs = {}
         file_count = 0
 
         version = get_app_version(app)
@@ -181,16 +223,30 @@ def main(args):
                 filename = file.split('\\')[-1]
                 print_if_verbose(f'File {filename} is {kind.mime}')
                 if kind.mime == SQLITE_MIME:
-                    dbs.append(filename)
+                    sanitized_filename = filename.split('.')[0]
+                    db_info = process_db(file)
+                    if db_info is None:
+                        print(f'Failed to get DB info for {file}')
+                        continue
+                    if dbs.get(sanitized_filename):
+                        # Already exists in dict. Check if we need to update info
+                        print_if_verbose(f'Two DBs with the same name found for {app_name}.')
+                        if db_info[USER_VERSION] > dbs.get(sanitized_filename)[USER_VERSION]:
+                            print_if_verbose('User version is greater than the last. Updating.')
+                            dbs[sanitized_filename] = db_info
+                    else:
+                        dbs[sanitized_filename] = db_info
                 else:
                     file_count += 1
             except:
                 print_if_verbose(f'Failed to guess type for {file}.')
         
-        app_info[DBS] = list(dict.fromkeys(dbs))
+        # app_info[DBS] = list(dict.fromkeys(dbs))
+        app_info[DBS] = dbs
         app_info[FILE_COUNT] = file_count
 
         user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
+        print(user_info)
         if is_new(app, app_info):
             print_if_verbose(f'There are updates for {app_name}')
             if notify:
@@ -212,6 +268,7 @@ def setup_args():
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
     parser.add_argument('-v', '--verbose', action='store_true', help='Shows all logging')
+    parser.add_argument('--version', action='store_true', help='Checks if local is up-to-date')
     return parser.parse_args()
 
 def setup_firebase():
@@ -227,5 +284,7 @@ if __name__ == "__main__":
         from win10toast import ToastNotifier
     if args.info or args.infohistory:
         get_info(args.infohistory)
+    if args.version:
+        is_local_updated()
     else:
         main(args)

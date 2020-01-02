@@ -19,4 +19,5 @@ Possible arguments:
 * -i, --info: Shows information available in Firebase.
 * -ih, --infohistory: Shows information available in Firebase with update history.
 * -v, --verbose: Shows all logging.
+* --version: Checks if local is up-to-date with the server schema.
 * -p, --path: Overrides the base path to AppData\Local\Packages to the specified one (useful if you have multiple users/disks or using a folder for tests).
