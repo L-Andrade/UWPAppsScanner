@@ -71,8 +71,8 @@ def is_local_updated():
 
     if SCHEMA_VERSION != schema_version:
         print('Your script is outdated.')
-        print(f'\tLocal is at version {SCHEMA_VERSION}')
-        print(f'\tServer is at version {schema_version}')
+        print(f'\tLocal is at version {SCHEMA_VERSION}.')
+        print(f'\tServer is at version {schema_version}.')
         return False
     print('Your script is up-to-date.')
     return True
@@ -281,7 +281,8 @@ if __name__ == "__main__":
         from win10toast import ToastNotifier
     if args.info or args.infohistory:
         get_info(args.infohistory)
+        exit()
     if args.version:
         is_local_updated()
-    else:
-        main(args)
+        exit()
+    main(args)
