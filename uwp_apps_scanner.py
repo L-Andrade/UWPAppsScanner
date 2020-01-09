@@ -99,7 +99,6 @@ def get_info(with_history):
 
 def get_version_number(filename):
     try:
-        print(str(filename))
         info = GetFileVersionInfo (filename, "\\")
         ms = info['FileVersionMS']
         ls = info['FileVersionLS']
