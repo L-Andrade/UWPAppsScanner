@@ -24,9 +24,9 @@ VERSION = 'version'
 SQLITE_MIME = 'application/x-sqlite3'
 CONFIRMING_CHAR = 'y'
 PRAGMA_USER_VERSION = 'PRAGMA user_version'
-SELECT_SQLITE_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
+SELECT_SQLITE_TABLES = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
 USER_VERSION = 'user_version'
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 def print_if_verbose(msg):
     if verbose:
@@ -149,6 +149,9 @@ def get_app_version(app):
         for app_dir in apps_dirs:
             if app_start_path in app_dir and 'x64' in app_dir:
                 full_path = windows_apps_path + '\\' + app_dir + '\\' + app[EXE]
+                # EXE not found in dir. Keep looking.
+                if not os.path.exists(full_path):
+                    continue
                 return get_version_number(full_path)
     except PermissionError:
         print(f'You do not have permissions to open {windows_apps_path}.')
@@ -243,7 +246,13 @@ def main(args):
         app_info[DBS] = dbs
         app_info[FILE_COUNT] = file_count
 
-        user_info = {'user': reported_by, 'windows_ver': windows_ver, 'updated_at': str(datetime.now())}
+        user_info = {
+                        'user': reported_by, \
+                        'windows_ver': windows_ver, \
+                        'updated_at': str(datetime.now()), \
+                        'app_version': app_info[VERSION], \
+                        'dbs': app_info[DBS]
+                    }
         if is_new(app, app_info):
             print_if_verbose(f'There are updates for {app_name}')
             if notify:
