@@ -5,6 +5,7 @@ import firebase_admin
 import filetype
 import time
 import sqlite3
+import json
 
 from dictdiffer import diff
 from datetime import datetime
@@ -96,6 +97,21 @@ def get_info(with_history):
             if key == "history" and not with_history:
                 continue
             print_item_or_dict(key, val)
+
+def export_as_json():
+    root = db.reference('/').get()
+    date = datetime.now().strftime("%d%m%Y_%H%M%S")
+    file_path = f'server{date}.json'
+
+    print(f'Output file will be {file_path}')
+    try:
+        with open(file_path, 'w') as file:
+            json.dump(root, file, indent = 4)
+        print('Exported successfully')
+    except Exception as e:
+        print('Error exporting')
+        print_if_verbose(str(e))
+
 
 def get_version_number(filename):
     try:
@@ -273,6 +289,7 @@ def setup_args():
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
     parser.add_argument('-v', '--verbose', action='store_true', help='Shows all logging')
+    parser.add_argument('-e', '--export', action='store_true', help='Export server data as JSON')
     parser.add_argument('--version', action='store_true', help='Checks if local is up-to-date')
     return parser.parse_args()
 
@@ -292,5 +309,8 @@ if __name__ == "__main__":
         exit()
     if args.version:
         is_local_updated()
+        exit()
+    if args.export:
+        export_as_json()
         exit()
     main(args)
