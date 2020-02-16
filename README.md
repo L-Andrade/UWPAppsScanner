@@ -3,7 +3,7 @@ A Python script with a Firebase Realtime Database to check for updates on certai
 
 # Requirements
 * Python 3.7
-* `pip install firebase-admin`
+* `pip install pyrebase4`
 * `pip install filetype`
 * `pip install dictdiffer`
 * `pip install pywin32`

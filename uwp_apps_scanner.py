@@ -1,7 +1,7 @@
 import argparse
 import platform
 import os
-import firebase_admin
+import pyrebase
 import filetype
 import time
 import sqlite3
@@ -9,11 +9,11 @@ import json
 
 from dictdiffer import diff
 from datetime import datetime
-from firebase_admin import credentials, db
 from pathlib import Path
 from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
 # Constants
+APPS = 'apps'
 PATH = 'path'
 EXE = 'exe'
 DBS = 'dbs'
@@ -27,7 +27,16 @@ CONFIRMING_CHAR = 'y'
 PRAGMA_USER_VERSION = 'PRAGMA user_version'
 SELECT_SQLITE_TABLES = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
 USER_VERSION = 'user_version'
-SCHEMA_VERSION = 3
+CONFIG = {
+        "apiKey": "AIzaSyDAkHPrbJa3IFyitFWBK_vXh5brDiJqf5E",
+        "authDomain": "uwp-apps-scanner.firebaseapp.com",
+        "databaseURL": "https://uwp-apps-scanner.firebaseio.com",
+        "projectId": "uwp-apps-scanner",
+        "storageBucket": "uwp-apps-scanner.appspot.com",
+        "messagingSenderId": "507102484200",
+        "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
+    }
+SCHEMA_VERSION = 4
 
 def print_if_verbose(msg):
     if verbose:
@@ -67,28 +76,30 @@ def get_list_of_files(base_path):
     return all_files
 
 def is_local_updated():
-    root = db.reference('/')
-    schema_version = root.child('schema_version').get()
+    root = firebase.database()
+    schema_version = root.child('schema_version').get().val()
 
     if SCHEMA_VERSION != schema_version:
         print('Your script is outdated.')
         print(f'\tLocal is at version {SCHEMA_VERSION}.')
         print(f'\tServer is at version {schema_version}.')
         return False
-    print('Your script is up-to-date.')
+    print(f'Your script is up-to-date, with version {schema_version}.')
     return True
 
 
 def get_info(with_history):
     print('Getting existing info from Firebase...')
     
-    root = db.reference('/')
-    apps_ref = root.child('apps')
-    apps_snapshot = apps_ref.get()
+    root = firebase.database()
     
-    for app_name in apps_snapshot:
-        app_ref = apps_ref.child(app_name)
-        app = app_ref.get()
+    # Get DB apps
+    apps_ref = root.child(APPS).get()
+
+    # For all apps in Firebase config
+    for _app_name in apps_ref.each():
+        app_name = _app_name.key()
+        app = root.child(APPS).child(app_name).get().val()
 
         print('\n-------------------------------------------------------------')
         print(f'App name: {app_name}')
@@ -99,7 +110,7 @@ def get_info(with_history):
             print_item_or_dict(key, val)
 
 def export_as_json():
-    root = db.reference('/').get()
+    root = firebase.database().get().val()
     date = datetime.now().strftime("%d%m%Y_%H%M%S")
     file_path = f'server{date}.json'
 
@@ -203,19 +214,18 @@ def main(args):
     windows_ver = platform.platform()
     start_time = time.time()
 
-    root = db.reference('/')
+    root = firebase.database()
 
     if not is_local_updated():
         return
 
     # Get DB apps
-    apps_ref = root.child('apps')
-    apps_snapshot = apps_ref.get()
+    apps_ref = root.child(APPS).get()
 
     # For all apps in Firebase config
-    for app_name in apps_snapshot:
-        app_ref = apps_ref.child(app_name)
-        app = app_ref.get()
+    for _app_name in apps_ref.each():
+        app_name = _app_name.key()
+        app = root.child(APPS).child(app_name).get().val()
         
         # Get path to app's folder
         full_path = os.path.join(path, app[PATH])
@@ -273,8 +283,8 @@ def main(args):
             if notify:
                 notify_user(toaster, app_name)
             app_info['updated_by'] = user_info
-            app_ref.child(HISTORY).push(user_info)
-            app_ref.update(app_info)
+            root.child(APPS).child(app_name).child(HISTORY).push(user_info)
+            root.child(APPS).child(app_name).update(app_info)
         else:
             print_if_verbose('No changes detected.')
         
@@ -294,12 +304,11 @@ def setup_args():
     return parser.parse_args()
 
 def setup_firebase():
-    cred = credentials.Certificate(CONFIG_FILE)
-    firebase_admin.initialize_app(cred, {'databaseURL': DATABASE_URL})
+    return pyrebase.initialize_app(CONFIG)
 
 if __name__ == "__main__":
     args = setup_args()
-    setup_firebase()
+    firebase = setup_firebase()
     verbose = args.verbose
     notify = args.notification
     if notify:
