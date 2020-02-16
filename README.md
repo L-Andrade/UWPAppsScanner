@@ -1,5 +1,5 @@
 # UWPAppsScanner
-A Python script with a Firebase Realtime Database to check for updates on certain Windows apps. Needs a config.json to connect to Firebase.
+A Python script with a Firebase Realtime Database to check for updates on certain Windows apps.
 
 # Requirements
 * Python 3.7
