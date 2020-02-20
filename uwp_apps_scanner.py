@@ -109,7 +109,7 @@ def get_info(with_history):
             print_item_or_dict(key, val)
 
 def export_as_json():
-    root = firebase.database().get().val()
+    root = firebase.database().child(APPS).get().val()
     date = datetime.now().strftime("%d%m%Y_%H%M%S")
     file_path = f'server{date}.json'
 
