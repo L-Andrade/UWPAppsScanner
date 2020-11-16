@@ -35,7 +35,7 @@ CONFIG = {
         "messagingSenderId": "507102484200",
         "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
     }
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 def print_if_verbose(msg):
     if verbose:
@@ -172,7 +172,7 @@ def get_app_version(app):
     try:
         apps_dirs = [dI for dI in os.listdir(windows_apps_path) if os.path.isdir(os.path.join(windows_apps_path, dI))]
         for app_dir in apps_dirs:
-            if app_start_path in app_dir and 'x64' in app_dir:
+            if app_start_path in app_dir and ('x64' in app_dir or 'x86' in app_dir):
                 full_path = windows_apps_path + '\\' + app_dir + '\\' + app[EXE]
                 # EXE not found in dir. Keep looking.
                 if not os.path.exists(full_path):
@@ -236,6 +236,7 @@ def main(args):
 
         version = get_app_version(app)
         if version is None:
+            print(f'Did not find version for {app_name}. Skipping.')
             continue
         app_info[VERSION] = version
 
