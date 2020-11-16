@@ -218,7 +218,7 @@ def main(args):
         app = root.child(APPS).child(args.app).get().val()
         if app is None:
             print(f'\nThere is no app with the name "{args.app}" in the server.\nDid you mean any of these apps:')
-            get_apps()
+            get_apps(False)
         else:
             analyze_app(root, args.app, app)
     
