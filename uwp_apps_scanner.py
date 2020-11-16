@@ -200,19 +200,6 @@ def process_db(file):
     return db_info
 
 def main(args):
-    # Args
-    if args.path:
-        path = args.path
-    else:
-        path = str(Path.home()) + '\\AppData\\Local\\Packages'
-    if notify:
-        toaster = ToastNotifier()
-
-    # Will be used later to identify version/user who updated the DB
-    reported_by = os.getlogin()
-    windows_ver = platform.platform()
-    start_time = time.time()
-
     root = firebase.database()
 
     if not is_local_updated():
@@ -221,76 +208,117 @@ def main(args):
     # Get DB apps
     apps_ref = root.child(APPS).get()
 
-    # For all apps in Firebase config
+    if args.app is None:
+        for _app_name in apps_ref.each():
+            app_name = _app_name.key()
+            app = root.child(APPS).child(app_name).get().val()
+            
+            analyze_app(root, app_name, app)
+    else:
+        app = root.child(APPS).child(args.app).get().val()
+        if app is None:
+            print(f'\nThere is no app with the name "{args.app}" in the server.\nDid you mean any of these apps:')
+            get_apps()
+        else:
+            analyze_app(root, args.app, app)
+    
+    print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
+
+def analyze_app(root, app_name, app):
+    # Get path to app's folder
+    full_path = os.path.join(path, app[PATH])
+
+    # Init app_info that will be sent to server
+    app_info = {}
+    dbs = {}
+    file_count = 0
+
+    version = get_app_version(app)
+    if version is None:
+        print(f'Did not find version for {app_name}. Skipping.')
+        return
+    app_info[VERSION] = version
+
+    # For all files in the app's folder
+    for file in get_list_of_files(full_path):
+        # Try to get file type
+        # If it got an exception or could not guess type, skip it
+        try:
+            kind = filetype.guess(file)
+            filename = file.split('\\')[-1]
+            print_if_verbose(f'File {filename} is {kind.mime}')
+            if kind.mime == SQLITE_MIME:
+                sanitized_filename = filename.split('.')[0]
+                db_info = process_db(file)
+                if db_info is None:
+                    print(f'Failed to get DB info for {file}')
+                    continue
+                if dbs.get(sanitized_filename):
+                    # Already exists in dict. Check if we need to update info
+                    print_if_verbose(f'Two DBs with the same name found for {app_name}.')
+                    if db_info[USER_VERSION] > dbs.get(sanitized_filename)[USER_VERSION]:
+                        print_if_verbose('User version is greater than the last. Updating.')
+                        dbs[sanitized_filename] = db_info
+                else:
+                    dbs[sanitized_filename] = db_info
+            else:
+                file_count += 1
+        except:
+            print_if_verbose(f'Failed to guess type for {file}.')
+    
+    # app_info[DBS] = list(dict.fromkeys(dbs))
+    app_info[DBS] = dbs
+    app_info[FILE_COUNT] = file_count
+
+    user_info = {
+                    'user': reported_by, \
+                    'windows_ver': windows_ver, \
+                    'updated_at': str(datetime.now()), \
+                    'app_version': app_info[VERSION], \
+                    'dbs': app_info[DBS]
+                }
+    if is_new(app, app_info):
+        print_if_verbose(f'There are updates for {app_name}')
+        if notify:
+            notify_user(toaster, app_name)
+        app_info['updated_by'] = user_info
+        root.child(APPS).child(app_name).child(HISTORY).push(user_info)
+        root.child(APPS).child(app_name).update(app_info)
+    else:
+        print_if_verbose('No changes detected.')
+    
+    print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
+
+def print_table (tbl, border_horizontal = '-', border_vertical = '|', border_cross = '+'):
+    cols = [list(x) for x in zip(*tbl)]
+    lengths = [max(map(len, map(str, col))) for col in cols]
+    f = border_vertical + border_vertical.join(' {:>%d} ' % l for l in lengths) + border_vertical
+    s = border_cross + border_cross.join(border_horizontal * (l+2) for l in lengths) + border_cross
+
+    print(s)
+    for row in tbl:
+        print(f.format(*row))
+        print(s)
+
+def get_apps(with_more_info):
+    root = firebase.database()
+    apps_ref = root.child(APPS).get()
+    
+    headers = ['App', 'Version']
+    if with_more_info:
+        headers.append('Last updated')
+        headers.append('Databases')
+    table_rows = [headers]
     for _app_name in apps_ref.each():
         app_name = _app_name.key()
         app = root.child(APPS).child(app_name).get().val()
-        
-        # Get path to app's folder
-        full_path = os.path.join(path, app[PATH])
+        app_info = [app_name, str(app[VERSION])]
+        if with_more_info:
+            app_info.append(app['updated_by']['updated_at'])
+            app_info.append(str(list(app[DBS].keys())))
+        table_rows.append(app_info)
 
-        # Init app_info that will be sent to server
-        app_info = {}
-        dbs = {}
-        file_count = 0
-
-        version = get_app_version(app)
-        if version is None:
-            print(f'Did not find version for {app_name}. Skipping.')
-            continue
-        app_info[VERSION] = version
-
-        # For all files in the app's folder
-        for file in get_list_of_files(full_path):
-            # Try to get file type
-            # If it got an exception or could not guess type, skip it
-            try:
-                kind = filetype.guess(file)
-                filename = file.split('\\')[-1]
-                print_if_verbose(f'File {filename} is {kind.mime}')
-                if kind.mime == SQLITE_MIME:
-                    sanitized_filename = filename.split('.')[0]
-                    db_info = process_db(file)
-                    if db_info is None:
-                        print(f'Failed to get DB info for {file}')
-                        continue
-                    if dbs.get(sanitized_filename):
-                        # Already exists in dict. Check if we need to update info
-                        print_if_verbose(f'Two DBs with the same name found for {app_name}.')
-                        if db_info[USER_VERSION] > dbs.get(sanitized_filename)[USER_VERSION]:
-                            print_if_verbose('User version is greater than the last. Updating.')
-                            dbs[sanitized_filename] = db_info
-                    else:
-                        dbs[sanitized_filename] = db_info
-                else:
-                    file_count += 1
-            except:
-                print_if_verbose(f'Failed to guess type for {file}.')
-        
-        # app_info[DBS] = list(dict.fromkeys(dbs))
-        app_info[DBS] = dbs
-        app_info[FILE_COUNT] = file_count
-
-        user_info = {
-                        'user': reported_by, \
-                        'windows_ver': windows_ver, \
-                        'updated_at': str(datetime.now()), \
-                        'app_version': app_info[VERSION], \
-                        'dbs': app_info[DBS]
-                    }
-        if is_new(app, app_info):
-            print_if_verbose(f'There are updates for {app_name}')
-            if notify:
-                notify_user(toaster, app_name)
-            app_info['updated_by'] = user_info
-            root.child(APPS).child(app_name).child(HISTORY).push(user_info)
-            root.child(APPS).child(app_name).update(app_info)
-        else:
-            print_if_verbose('No changes detected.')
-        
-        print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
-    
-    print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
+    print_table(table_rows)
 
 def setup_args():
     parser = argparse.ArgumentParser()
@@ -301,6 +329,9 @@ def setup_args():
     parser.add_argument('-v', '--verbose', action='store_true', help='Shows all logging')
     parser.add_argument('-e', '--export', action='store_true', help='Export server data as JSON')
     parser.add_argument('--version', action='store_true', help='Checks if local is up-to-date')
+    parser.add_argument('--apps', action='store_true', help='Lists all monitored apps in the server')
+    parser.add_argument('--appsdetail', action='store_true', help='Lists all monitored apps in the server with additional details')
+    parser.add_argument('--app', type=str, help='Update only a certain app')
     return parser.parse_args()
 
 def setup_firebase():
@@ -313,6 +344,9 @@ if __name__ == "__main__":
     notify = args.notification
     if notify:
         from win10toast import ToastNotifier
+    if args.apps or args.appsdetail:
+        get_apps(args.appsdetail)
+        exit()
     if args.info or args.infohistory:
         get_info(args.infohistory)
         exit()
@@ -322,4 +356,17 @@ if __name__ == "__main__":
     if args.export:
         export_as_json()
         exit()
+    
+    # Args
+    if args.path:
+        path = args.path
+    else:
+        path = str(Path.home()) + '\\AppData\\Local\\Packages'
+    if notify:
+        toaster = ToastNotifier()
+
+    # Will be used later to identify version/user who updated the DB
+    reported_by = os.getlogin()
+    windows_ver = platform.platform()
+    start_time = time.time()
     main(args)
