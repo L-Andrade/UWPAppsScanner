@@ -1,6 +1,9 @@
 # UWPAppsScanner
 A Python script with a Firebase Realtime Database to check for updates on certain Windows apps.
 
+# Disclaimer
+The scanner does not export any personal data that might be in the SQLite databases found. This can be seen from the queries at the top of the Python script. The scanner does use the Windows 10 username and Windows version.
+
 # Requirements
 * Python 3.7
 * `pip install pyrebase4`

@@ -35,7 +35,7 @@ CONFIG = {
         "messagingSenderId": "507102484200",
         "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
     }
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 def print_if_verbose(msg):
     if verbose:
@@ -315,7 +315,10 @@ def get_apps(with_more_info):
         app_info = [app_name, str(app[VERSION])]
         if with_more_info:
             app_info.append(app['updated_by']['updated_at'])
-            app_info.append(str(list(app[DBS].keys())))
+            if DBS in app:
+                app_info.append(str(list(app[DBS].keys())))
+            else:
+                app_info.append("No databases found yet.")
         table_rows.append(app_info)
 
     print_table(table_rows)
