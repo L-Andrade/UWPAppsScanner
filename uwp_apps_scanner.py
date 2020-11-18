@@ -104,7 +104,7 @@ def get_evolution(queried_app):
     for _app_name in apps_ref.each():
         app_name = _app_name.key()
         app = root.child(APPS).child(app_name).get().val()
-        print_app_evolution(root, app_name)
+        print_app_evolution(root, app_name, app)
 
 def list_of_dict_keys(any_dict):
     return list(any_dict.keys())
