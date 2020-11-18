@@ -86,7 +86,7 @@ def is_local_updated():
     print(f'Your script is up-to-date, with version {schema_version}.')
     return True
 
-def get_evolution():
+def get_evolution(queried_app):
     print('Getting existing info from Firebase...')
     
     root = firebase.database()
@@ -95,22 +95,30 @@ def get_evolution():
     apps_ref = root.child(APPS).get()
 
     # For all apps in Firebase config
+    if queried_app:
+        app = get_app_or_none(root, queried_app)
+        if app:
+            print_app_evolution(root, queried_app, app)
+        return
+
     for _app_name in apps_ref.each():
         app_name = _app_name.key()
         app = root.child(APPS).child(app_name).get().val()
-
-        print('\n-------------------------------------------------------------')
-        print(f'App name: {app_name}')
-        print('-------------------------------------------------------------')
-        history = list(app[HISTORY].values())
-        previous_printed = None
-        for i in range(len(history)):
-            is_last = (i == len(history) - 1)
-            record = history[i]
-            previous_printed = print_evolution(record, previous_printed)
+        print_app_evolution(root, app_name)
 
 def list_of_dict_keys(any_dict):
     return list(any_dict.keys())
+
+def print_app_evolution(root, app_name, app):
+    print('\n-------------------------------------------------------------')
+    print(f'App name: {app_name}')
+    print('-------------------------------------------------------------')
+    history = list(app[HISTORY].values())
+    previous_printed = None
+    for i in range(len(history)):
+        is_last = (i == len(history) - 1)
+        record = history[i]
+        previous_printed = print_evolution(record, previous_printed)
 
 def print_evolution(new, previous_printed):
     if DBS not in new:
@@ -262,14 +270,19 @@ def main(args):
             
             analyze_app(root, app_name, app)
     else:
-        app = root.child(APPS).child(args.app).get().val()
-        if app is None:
-            print(f'\nThere is no app with the name "{args.app}" in the server.\nDid you mean any of these apps:')
-            get_apps(False)
-        else:
+        app = get_app_or_none(root, args.app)
+        if app:
             analyze_app(root, args.app, app)
     
     print(f'Elapsed time: {round(time.time() - start_time, 2)}s')
+
+def get_app_or_none(root, app_name):
+    app = root.child(APPS).child(app_name).get().val()
+    if app is None:
+        print(f'\nThere is no app with the name "{args.app}" in the server.\nDid you mean any of these apps:')
+        get_apps(False)
+    return app
+
 
 def analyze_app(root, app_name, app):
     # Get path to app's folder
@@ -385,6 +398,7 @@ def setup_args():
     parser.add_argument('--version', action='store_true', help='Checks if local is up-to-date')
     parser.add_argument('--apps', action='store_true', help='Lists all monitored apps in the server')
     parser.add_argument('--appsdetail', action='store_true', help='Lists all monitored apps in the server with additional details')
+    parser.add_argument('--appevo', type=str, help='Print evolution of a certain app')
     parser.add_argument('--app', type=str, help='Update only a certain app')
     return parser.parse_args()
 
@@ -410,8 +424,8 @@ if __name__ == "__main__":
     if args.export:
         export_as_json()
         exit()
-    if args.evolution:
-        get_evolution()
+    if args.evolution or args.appevo:
+        get_evolution(args.appevo)
         exit()
     # Args
     if args.path:
