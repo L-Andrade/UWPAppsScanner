@@ -86,6 +86,53 @@ def is_local_updated():
     print(f'Your script is up-to-date, with version {schema_version}.')
     return True
 
+def get_evolution():
+    print('Getting existing info from Firebase...')
+    
+    root = firebase.database()
+    
+    # Get DB apps
+    apps_ref = root.child(APPS).get()
+
+    # For all apps in Firebase config
+    for _app_name in apps_ref.each():
+        app_name = _app_name.key()
+        app = root.child(APPS).child(app_name).get().val()
+
+        print('\n-------------------------------------------------------------')
+        print(f'App name: {app_name}')
+        print('-------------------------------------------------------------')
+        history = list(app[HISTORY].values())
+        previous_printed = None
+        for i in range(len(history)):
+            is_last = (i == len(history) - 1)
+            record = history[i]
+            previous_printed = print_evolution(record, previous_printed)
+
+def list_of_dict_keys(any_dict):
+    return list(any_dict.keys())
+
+def print_evolution(new, previous_printed):
+    if DBS not in new:
+        return previous_printed
+    new_keys = list_of_dict_keys(new[DBS])
+    if previous_printed is None:
+        print(f'\n{new_keys}')
+        return new
+    if previous_printed is None or DBS not in previous_printed:
+        return new
+    old_keys = list_of_dict_keys(previous_printed[DBS])
+    if new_keys == old_keys:
+        diff_result = list(diff(previous_printed[DBS], new[DBS]))
+        if len(diff_result) == 0:
+            return new
+        print(f'\n{new_keys}')
+        print('\tDiffers inside the databases: ')
+        for each_diff in diff_result:
+            print(f'\t\t{each_diff}')
+    else:
+        print(f'\n{new_keys}')
+    return new
 
 def get_info(with_history):
     print('Getting existing info from Firebase...')
@@ -288,7 +335,7 @@ def analyze_app(root, app_name, app):
         root.child(APPS).child(app_name).child(HISTORY).push(user_info)
         root.child(APPS).child(app_name).update(app_info)
     else:
-        print_if_verbose('No changes detected.')
+        print(f'No changes detected for {app_name}.')
     
     print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
 
@@ -332,6 +379,7 @@ def setup_args():
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
     parser.add_argument('-ih', '--infohistory', action='store_true', help='Print existing information on apps with history')
+    parser.add_argument('-evo', '--evolution', action='store_true', help='Print evolution of the apps databases')
     parser.add_argument('-v', '--verbose', action='store_true', help='Shows all logging')
     parser.add_argument('-e', '--export', action='store_true', help='Export server data as JSON')
     parser.add_argument('--version', action='store_true', help='Checks if local is up-to-date')
@@ -362,7 +410,9 @@ if __name__ == "__main__":
     if args.export:
         export_as_json()
         exit()
-    
+    if args.evolution:
+        get_evolution()
+        exit()
     # Args
     if args.path:
         path = args.path
