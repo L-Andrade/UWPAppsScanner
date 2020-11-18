@@ -14,6 +14,7 @@ from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
 # Constants
 APPS = 'apps'
+APP_VERSION = 'app_version'
 PATH = 'path'
 EXE = 'exe'
 DBS = 'dbs'
@@ -125,7 +126,7 @@ def print_evolution(new, previous_printed):
         return previous_printed
     new_keys = list_of_dict_keys(new[DBS])
     if previous_printed is None:
-        print(f'\n{new_keys}')
+        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
         return new
     if previous_printed is None or DBS not in previous_printed:
         return new
@@ -134,12 +135,12 @@ def print_evolution(new, previous_printed):
         diff_result = list(diff(previous_printed[DBS], new[DBS]))
         if len(diff_result) == 0:
             return new
-        print(f'\n{new_keys}')
+        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
         print('\tDiffers inside the databases: ')
         for each_diff in diff_result:
             print(f'\t\t{each_diff}')
     else:
-        print(f'\n{new_keys}')
+        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
     return new
 
 def get_info(with_history):
