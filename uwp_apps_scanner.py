@@ -117,7 +117,6 @@ def print_app_evolution(root, app_name, app):
     history = list(app[HISTORY].values())
     previous_printed = None
     for i in range(len(history)):
-        is_last = (i == len(history) - 1)
         record = history[i]
         previous_printed = print_evolution(record, previous_printed)
 
@@ -125,22 +124,23 @@ def print_evolution(new, previous_printed):
     if DBS not in new:
         return previous_printed
     new_keys = list_of_dict_keys(new[DBS])
+    formatted_keys = f'\nVersion {new[APP_VERSION]}:\t{new_keys}'
     if previous_printed is None:
-        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
+        print(formatted_keys)
         return new
-    if previous_printed is None or DBS not in previous_printed:
+    if DBS not in previous_printed:
         return new
     old_keys = list_of_dict_keys(previous_printed[DBS])
     if new_keys == old_keys:
         diff_result = list(diff(previous_printed[DBS], new[DBS]))
         if len(diff_result) == 0:
             return new
-        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
+        print(formatted_keys)
         print('\tDiffers inside the databases: ')
         for each_diff in diff_result:
             print(f'\t\t{each_diff}')
     else:
-        print(f'\nVersion {new[APP_VERSION]}:\t{new_keys}')
+        print(formatted_keys)
     return new
 
 def get_info(with_history):
