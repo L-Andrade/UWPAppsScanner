@@ -267,6 +267,9 @@ def analyze_app(root, app_name, app):
             print_if_verbose(f'Failed to guess type for {file}.')
     
     # app_info[DBS] = list(dict.fromkeys(dbs))
+    if not dbs:
+        print(f'Your database list is empty for {app_name}')
+        return
     app_info[DBS] = dbs
     app_info[FILE_COUNT] = file_count
 
