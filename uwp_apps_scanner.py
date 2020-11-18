@@ -36,7 +36,7 @@ CONFIG = {
         "messagingSenderId": "507102484200",
         "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
     }
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 def print_if_verbose(msg):
     if verbose:
@@ -208,7 +208,7 @@ def is_new(app, app_info):
     if app_info[VERSION] == app[VERSION] and app_info[DBS] != app[DBS]:
         print(f'App {app[EXE]} is in the same version in the server, but DBs are different.')
         print('Difference between LOCAL and SERVER is:')
-        for difference in list(diff(app_info[DBS], app[DBS])):
+        for difference in list(diff(app[DBS], app_info[DBS])):
             print(f'\t{difference}')
         option = input('\nType y if you would like to update server with local info: ')
         return option.lower() == CONFIRMING_CHAR
@@ -247,6 +247,7 @@ def process_db(file):
         db_info[USER_VERSION] = c.fetchone()[0]
         c.execute(SELECT_SQLITE_TABLES)
         db_info['tables'] = [item[0] for item in c.fetchall()]
+        db_info['total_tables'] = len(db_info['tables'])
     except Exception as e:
         db_info = None
         print_if_verbose(str(e))
