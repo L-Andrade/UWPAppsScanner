@@ -136,6 +136,9 @@ def print_evolution(new, previous_printed):
         if len(diff_result) == 0:
             return new
         print(formatted_keys)
+        for key in new_keys:
+            if key in old_keys:
+                print(f"Number of tables:\t [New] {len(new[DBS][key]['tables'])}\t [Old] {len(previous_printed[DBS][key]['tables'])} ({key})")
         print('\tDiffers inside the databases: ')
         for each_diff in diff_result:
             print(f'\t\t{each_diff}')
