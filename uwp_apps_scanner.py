@@ -317,7 +317,9 @@ def analyze_app(root, app_name, app):
             filename = file.split('\\')[-1]
             print_if_verbose(f'File {filename} is {kind.mime}')
             if kind.mime == SQLITE_MIME:
-                sanitized_filename = filename.split('.')[0]
+                initial_filename = filename.split('.')[0]
+                # Remove numbers
+                sanitized_filename = ''.join([i for i in initial_filename if not i.isdigit()])
                 db_info = process_db(file)
                 if db_info is None:
                     print(f'Failed to get DB info for {file}')
