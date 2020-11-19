@@ -194,6 +194,8 @@ def is_new_version(current, server):
     for i in range(0, len(server)):
         if current[i] > server[i]:
             return True
+        elif current[i] < server[i]:
+            return False
     return False
 
 def is_new(app, app_info):
