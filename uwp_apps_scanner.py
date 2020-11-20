@@ -36,7 +36,8 @@ CONFIG = {
         "messagingSenderId": "507102484200",
         "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
     }
-SCHEMA_VERSION = 7
+KEY_FILE_PATH = 'key_holder.json'
+SCHEMA_VERSION = 8
 
 def print_if_verbose(msg):
     if verbose:
@@ -356,8 +357,11 @@ def analyze_app(root, app_name, app):
         if notify:
             notify_user(toaster, app_name)
         app_info['updated_by'] = user_info
-        root.child(APPS).child(app_name).child(HISTORY).push(user_info)
-        root.child(APPS).child(app_name).update(app_info)
+        try:
+            root.child(APPS).child(app_name).child(HISTORY).push(user_info)
+            root.child(APPS).child(app_name).update(app_info)
+        except:
+            print(f'\nERROR: Failed to update. Is your local Firebase key setup correct?\n')
     else:
         print(f'No changes detected for {app_name}.')
     
@@ -399,6 +403,7 @@ def get_apps(with_more_info):
 
 def setup_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-k', '--key', type=str, help='Path to Firebase key. Saves after use!')
     parser.add_argument('-p', '--path', type=str, help='Path to AppData\\Local\\Packages')
     parser.add_argument('-n', '--notification', action='store_true', help='Receive notification if there are updates')
     parser.add_argument('-i', '--info', action='store_true', help='Print existing information on apps')
@@ -416,11 +421,37 @@ def setup_args():
 def setup_firebase():
     return pyrebase.initialize_app(CONFIG)
 
+def write_key_to_file(key_dict):
+    try:
+        with open(KEY_FILE_PATH, 'w') as file:
+            json.dump(key_dict, file, indent = 4)
+        print('Saved key successfully')
+    except Exception as e:
+        print('Error saving key')
+        print_if_verbose(str(e))
+
+def read_key_from_file():
+    try:
+        with open(KEY_FILE_PATH) as json_file:
+            data = json.load(json_file)
+            return data['key']
+    except Exception as e:
+        print_if_verbose('Error getting key')
+        print_if_verbose(str(e))
+    return None
+
 if __name__ == "__main__":
     args = setup_args()
     firebase = setup_firebase()
     verbose = args.verbose
     notify = args.notification
+    if args.key:
+        CONFIG['serviceAccount'] = args.key
+        write_key_to_file({'key': args.key})
+    else:
+        key_file_path = read_key_from_file()
+        print(f'Read key path successfully: {key_file_path}')
+        CONFIG['serviceAccount'] = key_file_path
     if notify:
         from win10toast import ToastNotifier
     if args.apps or args.appsdetail:
