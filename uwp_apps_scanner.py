@@ -270,6 +270,9 @@ def main(args):
     if not is_local_updated():
         return
 
+    if not CONFIG['serviceAccount']:
+        print('You do not have a key file.')
+        return
     # Get DB apps
     apps_ref = root.child(APPS).get()
 
@@ -450,7 +453,7 @@ if __name__ == "__main__":
         write_key_to_file({'key': args.key})
     else:
         key_file_path = read_key_from_file()
-        print(f'Read key path successfully: {key_file_path}')
+        print(f'Key path: {key_file_path}')
         CONFIG['serviceAccount'] = key_file_path
     if notify:
         from win10toast import ToastNotifier
