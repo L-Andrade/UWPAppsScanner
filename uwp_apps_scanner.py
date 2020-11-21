@@ -127,7 +127,7 @@ def print_evolution(new, previous_printed):
     if DBS not in new:
         return previous_printed
     new_keys = list_of_dict_keys(new[DBS])
-    if TIMES in new:
+    if TIMES in new and 'modification' in new[TIMES]:
         last_modified = new[TIMES]['modification']
     else:
         last_modified = 'N/A'
