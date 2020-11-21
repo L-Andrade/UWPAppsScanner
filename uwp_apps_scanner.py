@@ -11,6 +11,7 @@ from dictdiffer import diff
 from datetime import datetime
 from pathlib import Path
 from win32api import GetFileVersionInfo, LOWORD, HIWORD
+import win32file
 
 # Constants
 APPS = 'apps'
@@ -22,6 +23,7 @@ FILE_COUNT = 'file_count'
 HISTORY = 'history'
 DATABASE_URL = 'https://uwp-apps-scanner.firebaseio.com/'
 VERSION = 'version'
+TIMES = 'times'
 SQLITE_MIME = 'application/x-sqlite3'
 CONFIRMING_CHAR = 'y'
 PRAGMA_USER_VERSION = 'PRAGMA user_version'
@@ -125,7 +127,12 @@ def print_evolution(new, previous_printed):
     if DBS not in new:
         return previous_printed
     new_keys = list_of_dict_keys(new[DBS])
-    formatted_keys = f'\nVersion {new[APP_VERSION]}:\t{new_keys}'
+    if TIMES in new:
+        last_modified = new[TIMES]['modification']
+    else:
+        last_modified = 'N/A'
+    print(str(new))
+    formatted_keys = f'\nVersion {new[APP_VERSION]} ({last_modified}):\t{new_keys}'
     if previous_printed is None:
         print(formatted_keys)
         return new
@@ -194,6 +201,21 @@ def get_version_number(filename):
     except:
         return [0, 0, 0, 0]
 
+def get_file_times(filename):
+    try:
+        handle = win32file.CreateFile(path, win32file.GENERIC_READ, \
+            win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE, \
+            None, win32file.OPEN_EXISTING, win32file.FILE_FLAG_BACKUP_SEMANTICS, None)
+        times = win32file.GetFileTime(handle)
+        win32file.CloseHandle(handle)
+        return {'creation': pydatetime_to_str(times[0]), 'access': pydatetime_to_str(times[1]), 'modification': pydatetime_to_str(times[2])}
+    except Exception as e:
+        print(f'Failed to get file times {e}')
+        return {}
+
+def pydatetime_to_str(file_datetime):
+    return file_datetime.strftime('%Y-%m-%d %H:%M:%SZ')
+
 def is_new_version(current, server):
     if len(current) > len(server):
         return True
@@ -230,7 +252,7 @@ def notify_user(toaster, app_name):
     except:
         pass
 
-def get_app_version(app):
+def get_app_exe_data(app):
     windows_apps_path = os.environ['ProgramW6432'] + '\\WindowsApps'
     app_start_path = app[PATH].split('_')[0]
     try:
@@ -241,7 +263,7 @@ def get_app_version(app):
                 # EXE not found in dir. Keep looking.
                 if not os.path.exists(full_path):
                     continue
-                return get_version_number(full_path)
+                return {VERSION: get_version_number(full_path), TIMES: get_file_times(full_path)}
     except PermissionError:
         print(f'You do not have permissions to open {windows_apps_path}.')
     return None
@@ -306,11 +328,12 @@ def analyze_app(root, app_name, app):
     dbs = {}
     file_count = 0
 
-    version = get_app_version(app)
-    if version is None:
+    exe_data = get_app_exe_data(app)
+    if exe_data[VERSION] is None:
         print(f'Did not find version for {app_name}. Skipping.')
         return
-    app_info[VERSION] = version
+    app_info[VERSION] = exe_data[VERSION]
+    app_info[TIMES] = exe_data[TIMES]
 
     # For all files in the app's folder
     for file in get_list_of_files(full_path):
@@ -353,6 +376,7 @@ def analyze_app(root, app_name, app):
                     'windows_ver': windows_ver, \
                     'updated_at': str(datetime.now()), \
                     'app_version': app_info[VERSION], \
+                    'times': app_info[TIMES], \
                     'dbs': app_info[DBS]
                 }
     if is_new(app, app_info):
@@ -366,6 +390,10 @@ def analyze_app(root, app_name, app):
         except:
             print(f'\nERROR: Failed to update. Is your local Firebase key setup correct?\n')
     else:
+        if TIMES not in app and app_info[VERSION] == app[VERSION] and app_info[DBS] == app[DBS]:
+            print(f'{app_name} did not have time info. Adding...')
+            root.child(APPS).child(app_name).child(HISTORY).push(user_info)
+            root.child(APPS).child(app_name).update(app_info)
         print(f'No changes detected for {app_name}.')
     
     print(f'Found {str(len(dbs))} DBs for {app_name}, with version {app_info[VERSION]}')
@@ -445,9 +473,6 @@ def read_key_from_file():
 
 if __name__ == "__main__":
     args = setup_args()
-    firebase = setup_firebase()
-    verbose = args.verbose
-    notify = args.notification
     if args.key:
         CONFIG['serviceAccount'] = args.key
         write_key_to_file({'key': args.key})
@@ -455,6 +480,9 @@ if __name__ == "__main__":
         key_file_path = read_key_from_file()
         print(f'Key path: {key_file_path}')
         CONFIG['serviceAccount'] = key_file_path
+    firebase = setup_firebase()
+    verbose = args.verbose
+    notify = args.notification
     if notify:
         from win10toast import ToastNotifier
     if args.apps or args.appsdetail:
