@@ -131,7 +131,7 @@ def print_evolution(new, previous_printed):
         last_modified = new[TIMES]['modification']
     else:
         last_modified = 'N/A'
-    print(str(new))
+    
     formatted_keys = f'\nVersion {new[APP_VERSION]} ({last_modified}):\t{new_keys}'
     if previous_printed is None:
         print(formatted_keys)
