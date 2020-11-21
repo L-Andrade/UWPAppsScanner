@@ -39,7 +39,7 @@ CONFIG = {
         "appId": "1:507102484200:web:1050cceded4e0ef99e5b5d"
     }
 KEY_FILE_PATH = 'key_holder.json'
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 def print_if_verbose(msg):
     if verbose:
