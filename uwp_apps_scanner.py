@@ -329,7 +329,7 @@ def analyze_app(root, app_name, app):
     file_count = 0
 
     exe_data = get_app_exe_data(app)
-    if exe_data[VERSION] is None:
+    if not exe_data or VERSION not in exe_data or exe_data[VERSION] is None:
         print(f'Did not find version for {app_name}. Skipping.')
         return
     app_info[VERSION] = exe_data[VERSION]
@@ -473,6 +473,7 @@ def read_key_from_file():
 
 if __name__ == "__main__":
     args = setup_args()
+    verbose = args.verbose
     if args.key:
         CONFIG['serviceAccount'] = args.key
         write_key_to_file({'key': args.key})
@@ -481,7 +482,6 @@ if __name__ == "__main__":
         print(f'Key path: {key_file_path}')
         CONFIG['serviceAccount'] = key_file_path
     firebase = setup_firebase()
-    verbose = args.verbose
     notify = args.notification
     if notify:
         from win10toast import ToastNotifier
